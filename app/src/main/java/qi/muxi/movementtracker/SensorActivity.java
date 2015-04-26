@@ -22,11 +22,14 @@ public class SensorActivity extends ActionBarActivity implements SensorEventList
 
     private static final String LOG_TAG = "SensorActivity";
     public static Handler uiHandler;
+
     TextView xAxisValue, yAxisValue, zAxisValue;
     private boolean enableSensing;
     private SensorManager mSensorManager;
-    private Sensor accSensor, laccSensor, mSensor;
+    private Sensor laccSensor, gravity, mSensor;
     private MeasuredDatabaseManager measuredDatabaseManager;
+
+    private SensorThread myThread;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,6 +46,9 @@ public class SensorActivity extends ActionBarActivity implements SensorEventList
         yAxisValue.setText(String.valueOf(2));
         zAxisValue.setText(String.valueOf(3));
 
+        myThread = new SensorThread("SensorThread");
+        myThread.start();
+
         enableSensing = getIntent().getBooleanExtra("enableSensingFlag", true);
 //       TODO: EVETYTIME the SensorActivity started, clear the database (Change the pos of this method call anywhere if needed )
         measuredDatabaseManager = MeasuredDatabaseManager.getInstance(getApplicationContext());
@@ -50,7 +56,7 @@ public class SensorActivity extends ActionBarActivity implements SensorEventList
         measuredDatabaseManager.clearDatabase();
 
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        accSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        gravity = mSensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
         laccSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
         mSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
 
@@ -130,8 +136,8 @@ public class SensorActivity extends ActionBarActivity implements SensorEventList
 //          This method is called on the background thread: SensorThread
 
 //            passing event values to background service using intents
-            Message eventMessage = SensorThread.getHandler().obtainMessage(1, sensorEvent);
-            eventMessage.setTarget(SensorThread.getHandler());
+            Message eventMessage = myThread.getHandler().obtainMessage(1, sensorEvent);
+            eventMessage.setTarget(myThread.getHandler());
             eventMessage.sendToTarget();
 
             Log.i(LOG_TAG, "Current running thread is : " + Thread.currentThread());
@@ -152,17 +158,17 @@ public class SensorActivity extends ActionBarActivity implements SensorEventList
         super.onResume();
         Log.i(LOG_TAG, "onResume reached!");
 
-        //        start another new thread here
-        if (accSensor != null)
-            // registerListener (Context, Sensor, int sample_frequency, int report_frequency)
-            mSensorManager.registerListener(this, accSensor, SensorManager.SENSOR_DELAY_GAME, SensorThread.getHandler());
+        //  start another new thread here
+        if (gravity != null)
+            // registerListener (Context, Sensor, int sample_frequency, Handler handler)
+            mSensorManager.registerListener(this, gravity, SensorManager.SENSOR_DELAY_GAME, myThread.getHandler());
 
         if (laccSensor != null)
-            mSensorManager.registerListener(this, laccSensor, SensorManager.SENSOR_DELAY_GAME, SensorThread.getHandler());
+            mSensorManager.registerListener(this, laccSensor, SensorManager.SENSOR_DELAY_GAME, myThread.getHandler());
 
         if (mSensor != null) {
+            mSensorManager.registerListener(this, mSensor, SensorManager.SENSOR_DELAY_GAME, myThread.getHandler());
         }
-        mSensorManager.registerListener(this, mSensor, SensorManager.SENSOR_DELAY_GAME, SensorThread.getHandler());
     }
 
     @Override
