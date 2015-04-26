@@ -41,30 +41,16 @@ public class MainActivity2Activity extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main_activity2);
 
-        SensorThread myThread = new SensorThread("SensorThread");
-        myThread.start();
-
         final Button startButton = (Button) findViewById(R.id.start_button2);
         startButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
 //                create new working thread using IntentService subclass
                 final boolean enableSensing = true;
-
-//              starting a new thread here
-                Handler mHandler = new Handler();
-//                Thread myThread = new Thread
-                task = new Runnable() {
-                    public void run() {
-                        Log.i(LOG_TAG, "new thread is started and running");
-
-                        intent = new Intent(getApplicationContext(), SensorActivity.class);
-                        intent.putExtra("enableSensingFlag", enableSensing);
-                        startActivity(intent);
-                    }
-                };
-                mHandler.post(task);
-//                myThread.start();
+                Log.i(LOG_TAG, "another activity is gonna start right now, it should be main thread here: " + Thread.currentThread());
+                intent = new Intent(getApplicationContext(), SensorActivity.class);
+                intent.putExtra("enableSensingFlag", enableSensing);
+                startActivity(intent);
 
                 Log.i(LOG_TAG, "start button pressed");
                 Toast.makeText(getApplicationContext(), "startButton pressed", Toast.LENGTH_SHORT).show();
