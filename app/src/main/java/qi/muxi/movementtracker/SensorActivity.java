@@ -17,6 +17,8 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.IOException;
+
 
 public class SensorActivity extends ActionBarActivity implements SensorEventListener {
 
@@ -75,6 +77,26 @@ public class SensorActivity extends ActionBarActivity implements SensorEventList
             }
         });
 
+        measuredDatabaseManager = MeasuredDatabaseManager.getInstance(this);
+        final Button reviewButton = (Button) findViewById (R.id.review_button);
+        reviewButton.setOnClickListener(new View.OnClickListener() {
+
+            @Override
+            public void onClick(View v) {
+
+                Log.i(LOG_TAG, "reviewButton pressing");
+
+                try {
+                    measuredDatabaseManager.printAll();
+                } catch (IOException e) {
+                    Log.e(LOG_TAG, "Saving Failed");
+                    e.printStackTrace();
+                }
+
+                Log.i(LOG_TAG, "reviewButton pressed");
+                Toast.makeText(getApplicationContext(), "reviewButton pressed", Toast.LENGTH_SHORT).show();
+            }
+        });
 //        UI handler class used to update the views on main Thread (Perhaps the final 2D-image of the user's gesture input )
         /**
          * TODO: Retrieving data from backend and display on the UI (suggested ways of implementations)
