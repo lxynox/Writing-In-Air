@@ -28,6 +28,7 @@ public class SensorDataProcessService extends IntentService {
     private static final String EXTRA_TIME_STAMP = "qi.muxi.movementtracker.extra.TIME_STAMP";
     private static final String EXTRA_SENSOR_TYPE = "qi.muxi.movementtracker.extra.SENSOR_TYPE";
     private static final String EXTRA_SENSOR_VALUE = "qi.muxi.movementtracker.extra.SENSOR_VALUE";
+    private static final String EXTRA_END_FETCH = "qi.muxi.movementtracker.extra.END_FETCH";
     // Create a constant to convert nanoseconds to seconds.
     private static final float NS2S = 1.0f / 1000000000.0f;
     private static Sample sample;
@@ -57,13 +58,14 @@ public class SensorDataProcessService extends IntentService {
      */
     // TODO: Customize helper method
     public static void startActionFetchSensorData(Context context, float[] eventValues,
-                                                  long timeStamp, int eventType) {
+                                                  long timeStamp, int eventType, boolean endFetch) {
 
         Intent intent = new Intent(context, SensorDataProcessService.class);
         intent.setAction(ACTION_STORE_SENSOR_DATA);
         intent.putExtra(EXTRA_SENSOR_VALUE, eventValues);
         intent.putExtra(EXTRA_SENSOR_TYPE, eventType);
         intent.putExtra(EXTRA_TIME_STAMP, timeStamp);
+        intent.putExtra(EXTRA_END_FETCH, endFetch);
         context.startService(intent);
         Log.i(LOG_TAG, "new service started!");
     }
@@ -107,34 +109,40 @@ public class SensorDataProcessService extends IntentService {
             Log.i(LOG_TAG, "onHandleIntent reached on thread: " + Thread.currentThread() + "!");
 
             if (ACTION_STORE_SENSOR_DATA.equals(action)) {
-                float[] sensorVal = intent.getFloatArrayExtra(EXTRA_SENSOR_VALUE);
-                long timestamp = intent.getLongExtra(EXTRA_TIME_STAMP, 0l);
-                int sensorType = intent.getIntExtra(EXTRA_SENSOR_TYPE, 0);
-                rowCounter++;
+                if (!intent.getBooleanExtra(EXTRA_END_FETCH, false)) {
+                    float[] sensorVal = intent.getFloatArrayExtra(EXTRA_SENSOR_VALUE);
+                    long timestamp = intent.getLongExtra(EXTRA_TIME_STAMP, 0l);
+                    int sensorType = intent.getIntExtra(EXTRA_SENSOR_TYPE, 0);
+                    rowCounter++;
 
 //                update the values to database
-                sample.updateID(rowCounter);
-                sample.updateTime(timestamp);
+                    sample.updateID(rowCounter);
+                    sample.updateTime(timestamp);
 
-                switch (sensorType) {
-                    case Sensor.TYPE_LINEAR_ACCELERATION:
-                        sample.updateLAcc(sensorVal);
-                        break;
+                    switch (sensorType) {
+                        case Sensor.TYPE_LINEAR_ACCELERATION:
+                            sample.updateLAcc(sensorVal);
+                            break;
 
-                    case Sensor.TYPE_GRAVITY:
-                        sample.updateG(sensorVal);
-                        break;
+                        case Sensor.TYPE_GRAVITY:
+                            sample.updateG(sensorVal);
+                            break;
 
-                    case Sensor.TYPE_MAGNETIC_FIELD:
-                        sample.updateM(sensorVal);
+                        case Sensor.TYPE_MAGNETIC_FIELD:
+                            sample.updateM(sensorVal);
 
-                    default:
-                        break;
+                        default:
+                            break;
+                    }
+
+                    sample.updateSpeedPos();
+                    measuredDatabaseManager.saveSample(sample);
+
+                } else {
+                    sample = new Sample();
+                    rowCounter = 0;
+//                    continue to call some API from the service layer
                 }
-
-                sample.updateSpeedPos();
-                measuredDatabaseManager.saveSample(sample);
-
             }
 
         }

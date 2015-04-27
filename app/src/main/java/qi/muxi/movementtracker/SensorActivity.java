@@ -70,6 +70,8 @@ public class SensorActivity extends ActionBarActivity implements SensorEventList
 //              Stop adding new service-intents in the background,
 //              onHandleIntent() is still processing those intents left in the message queues
                 enableSensing = false;
+//                TODO: add notification here to notify the service when the sensor event is ended
+//                todo: myThread.getHandler().
 //                SensorDataProcessService.endActionFetchSensorData (getApplicationContext());
 //                SensorThread.getLooper().quit();
                 Log.i(LOG_TAG, "end button pressed");
@@ -165,7 +167,11 @@ public class SensorActivity extends ActionBarActivity implements SensorEventList
             Log.i(LOG_TAG, "Current running thread is : " + Thread.currentThread());
 //            start another background thread here: SensorDataProcessService($IntentService) thread
             SensorDataProcessService.startActionFetchSensorData(this, sensorEvent.values,
-                    sensorEvent.timestamp, sensorEvent.sensor.getType());
+                    sensorEvent.timestamp, sensorEvent.sensor.getType(), false);
+        } else {
+            Log.i(LOG_TAG, "Stop sensor events, change the service intent FLAG to true");
+            SensorDataProcessService.startActionFetchSensorData(this, sensorEvent.values,
+                    sensorEvent.timestamp, sensorEvent.sensor.getType(), true);
         }
 
     }
