@@ -113,16 +113,16 @@ public class SensorDataProcessService extends IntentService {
                 rowCounter++;
 
 //                update the values to database
-                sample.updateTime(timestamp);
                 sample.updateID(rowCounter);
+                sample.updateTime(timestamp);
 
                 switch (sensorType) {
                     case Sensor.TYPE_LINEAR_ACCELERATION:
                         sample.updateLAcc(sensorVal);
                         break;
 
-                    case Sensor.TYPE_ACCELEROMETER:
-                        sample.updateAcc(sensorVal);
+                    case Sensor.TYPE_GRAVITY:
+                        sample.updateG(sensorVal);
                         break;
 
                     case Sensor.TYPE_MAGNETIC_FIELD:
@@ -132,6 +132,7 @@ public class SensorDataProcessService extends IntentService {
                         break;
                 }
 
+                sample.updateSpeedPos();
                 measuredDatabaseManager.saveSample(sample);
 
             }
