@@ -5,40 +5,85 @@ import android.hardware.SensorManager;
 import java.util.Arrays;
 
 /**
- * Caution:
- * 1. for initialization, use Sample(), and setters.
- * 2. for updating, use updaters.
- * 3. always update ID -> then time -> then others,
- * or you can use update(long, float, float[], float[], float[]) to update all at once.
- * 4. all getters and setters are sending data not reference, please feel safe to use them.
+ * <p>A class describing and processing samples.</p>
+ * <p>Caution:<br>
+ * <ul>
+ * <li>1. for initialization, use Sample(), and setters. </li>
+ * <li>2. for updating, use updaters. </li>
+ * <li>3. always update ID, then update time, then update sensor data, then update SpeedPos, or you can use update(long, float, float[], float[], float[]) to update all at once. </li>
+ * <li>4. all getters and setters are sending data not reference, please feel safe to use them. </li>
+ * </ul>
+ * </p>
  *
  * @author Muxi
  */
 public class Sample {
+    /**
+     * the log tag string for debugging this class.
+     */
     public static final String LOG_TAG = "Sample";
-    // Create a constant to convert nanoseconds to seconds.
+    /**
+     * the constant to convert nanoseconds to seconds.
+     */
     private static final float NS2S = 1.0f / 1000000000.0f;
 
+    /**
+     * the primary key _id.
+     */
     private long mID;
-    private long timeStamp; // in nanoseconds
-    private float timeInterval; // in seconds
+    /**
+     * the timestamp of sensor event, in nanosecond.
+     */
+    private long timeStamp;
+    /**
+     * the time interval from the previous event to current event, in second
+     */
+    private float timeInterval;
 
+    /**
+     * the acceleration.
+     */
     private float[] acc;
+    /**
+     * the gravity.
+     */
     private float[] g;
+    /**
+     * the linear acceleration.
+     */
     private float[] lAcc;
+    /**
+     * the magnetic.
+     */
     private float[] m;
+    /**
+     * the world acceleration.
+     */
     private float[] wAcc;
+    /**
+     * the speed.
+     */
     private float[] speed;
+    /**
+     * the position.
+     */
     private float[] pos;
     /**
-     * the flag marks whether g or m has been set, used for setting wAcc if and only if g and m all set
+     * the previous linear acceleration.
+     */
+    private float[] lAcc_Pre;
+    /**
+     * the flag marks whether g or m has been set, used for setting wAcc if and only if g and m all set.
      */
     private boolean isSetG, isSetM;
     /**
-     * the rotation matrix, stored in array of length 16
+     * the rotation matrix, stored in array of length 16.
      */
     private float[] rotationMatrix;
 
+    /**
+     * Construct a sample, initialing all to zeros or an identity matrix for the rotation matrix.
+     */
     public Sample() {
         this.mID = 0;
         this.timeStamp = 0;
@@ -57,6 +102,8 @@ public class Sample {
         Arrays.fill(speed, 0);
         this.pos = new float[3];
         Arrays.fill(pos, 0);
+        this.lAcc_Pre = new float[3];
+        Arrays.fill(lAcc_Pre, 0);
         // Initial rotation matrix to an identity matrix
         this.rotationMatrix = new float[16];
         Arrays.fill(rotationMatrix, 0);
@@ -68,6 +115,16 @@ public class Sample {
         this.isSetM = false;
     }
 
+    /**
+     * Update this sample, by provided sensor data.
+     *
+     * @param mID       the primary key _id.
+     * @param timeStamp the timestamp of sensor event.
+     * @param acc       the accelerometer data.
+     * @param g         the gravity data.
+     * @param lAcc      the linear accelerometer data.
+     * @param m         the magnetic data.
+     */
     public void update(long mID, long timeStamp, float[] acc, float[] g, float[] lAcc, float[] m) {
         updateID(mID);
         updateTime(timeStamp);
@@ -80,6 +137,7 @@ public class Sample {
         SensorManager.getRotationMatrix(rotationMatrix, null, this.g, m);
         setRotationMatrix(rotationMatrix);
         updateLAcc(lAcc);
+        updateSpeedPos();
     }
 
     public long getID() {
@@ -90,6 +148,11 @@ public class Sample {
         this.mID = mID;
     }
 
+    /**
+     * Update _id.
+     *
+     * @param mID the primary key _id.
+     */
     public void updateID(long mID) {
         setID(mID);
     }
@@ -102,44 +165,15 @@ public class Sample {
         this.timeStamp = timeStamp;
     }
 
+    /**
+     * Update timestamp and time interval.
+     *
+     * @param timeStamp the timestamp of sensor event.
+     */
     public void updateTime(long timeStamp) {
-        // Explain for the starting sample:
-        //   the problem:
-        //     the first sample in a tracing has a timestamp instead of time interval,
-        //     which is significant in Speed and Pos calculation.
-        //   the solution:
-        //     Clear sample before each starting, thus previous wAcc, speed, pos will be 0,
-        //     So the time data will not be significant because it will be multiplied with 0.
-        //     (See below).
-        // TODO no error in storage, but error in calculation,
-        // TODO (contd) the sampled data have a small and unstable but approximate-direction-stable acceleration error
-        // TODO (contd) this error is called drift noise, or random walk noise (low frequency noise).
-        // TODO (contd) It needs a really really long time to average to zero and can be filtered out by a high pass filter.
-        // TODO (contd) Two solution options:
-        // TODO (contd) 1. as the paper, make use of previous period and holding-phone period, when ever detect a holding-phone, reset speed to zero, however it will not remove the noise, just easing it.
-        // TODO (contd) 2. use a high pass filter, it will remove such noise, however, how to implement? and is low pass filter required for white noise? and is there already a filter in Linear Accelerometer?
         float timeInterval = (float) (timeStamp - getTimeStamp()) * NS2S; // this time in second
         setTimeStamp(timeStamp);
         setTimeInterval(timeInterval);
-        float[] acc, speed, pos, zeros;
-        acc = getAcc();
-        speed = getSpeed();
-        pos = getPos();
-        zeros = new float[3];
-        Arrays.fill(zeros, 0);
-        pos[0] = pos[0] + speed[0] * timeInterval + 0.5f * acc[0] * timeInterval * timeInterval;
-        pos[1] = pos[1] + speed[1] * timeInterval + 0.5f * acc[1] * timeInterval * timeInterval;
-        pos[2] = pos[2] + speed[2] * timeInterval + 0.5f * acc[2] * timeInterval * timeInterval;
-        speed[0] = speed[0] + acc[0] * timeInterval;
-        speed[1] = speed[1] + acc[1] * timeInterval;
-        speed[2] = speed[2] + acc[2] * timeInterval;
-        float speedMag = (float) Math.sqrt(speed[0] * speed[0] + speed[1] * speed[1] + speed[2] * speed[2]);
-        if (speedMag < 0.05)
-            Arrays.fill(speed, 0);// TODO here set speed to zero when it is small, is it required?
-        else setPos(pos);
-        setSpeed(speed);
-        // Log.i(LOG_TAG, String.valueOf(pos[0]) + ";" + String.valueOf(pos[1]) + ";" + String.valueOf(pos[2]));
-        // Log.i(LOG_TAG, String.valueOf(speed[0]) + ";" + String.valueOf(speed[1]) + ";" + String.valueOf(speed[2]));
     }
 
     public float getTimeInterval() {
@@ -158,24 +192,13 @@ public class Sample {
         this.acc = Arrays.copyOf(acc, this.acc.length);
     }
 
+    /**
+     * <p>Update accelerometer data, also updating world acceleration data at the same time if gravity and magnetic are already set. </p>
+     * <p>This method is used only when we use accelerometer data to calculate world acceleration data. <b>Not applicable in our project now. </b></p>
+     *
+     * @param acc the accelerometer data.
+     */
     public void updateAcc(float[] acc) {
-        // a higher alpha refers to a lower split frequency
-        /*float driftAlpha = 1.0f, whiteAlpha = 0.0f;
-        float[] drift, whiteBias;
-        drift = getAcc();
-        whiteBias = getAcc(); // TODO seems not right, think carefully
-        // apply band pass filter to get rid of drift and white noise TODO how does gravity sensor work? just using accelerometer data and filtering it?
-        drift[0] = driftAlpha*drift[0] + (1-driftAlpha)*acc[0];
-        drift[1] = driftAlpha*drift[1] + (1-driftAlpha)*acc[1];
-        drift[2] = driftAlpha*drift[2] + (1-driftAlpha)*acc[2];
-        whiteBias[0] = whiteAlpha*whiteBias[0] + (1-whiteAlpha)*acc[0];
-        whiteBias[1] = whiteAlpha*whiteBias[1] + (1-whiteAlpha)*acc[1];
-        whiteBias[2] = whiteAlpha*whiteBias[2] + (1-whiteAlpha)*acc[2];
-        // white noise = acc - whiteBias; noise-free acc = acc - drift - white noise
-        acc[0] = whiteBias[0] - drift[0];
-        acc[1] = whiteBias[1] - drift[1];
-        acc[2] = whiteBias[2] - drift[2];
-        // Log.i(LOG_TAG, String.valueOf(pos[0]) + ";" + String.valueOf(pos[1]) + ";" + String.valueOf(pos[2]));*/
         setAcc(acc);
         if (isSetG() && isSetM()) {
             updateWAcc(getWorldVector(getRotationMatrix(), this.acc));
@@ -190,6 +213,11 @@ public class Sample {
         this.g = Arrays.copyOf(g, this.g.length);
     }
 
+    /**
+     * Update gravity data, also updating world acceleration data at the same time if magnetic is already set.
+     *
+     * @param g the gravity data.
+     */
     public void updateG(float[] g) {
         setG(g);
         haveSetG();
@@ -210,13 +238,21 @@ public class Sample {
 
     }
 
-    public void updateLAcc(float[] lAcc) { // TODO here applied a band pass filter. is it required?
+    /**
+     * <p>Update linear accelerometer data, also updating world acceleration data at the same time if gravity and magnetic are already set. </p>
+     * <p>This method is implemented with a band pass filter and a threshold to get rid of noise. </p>
+     *
+     * @param lAcc the linear accelerometer data.
+     */
+    public void updateLAcc(float[] lAcc) { // Apply a band pass filter.
         // a higher alpha refers to a lower split frequency
-        float driftAlpha = 1.0f, whiteAlpha = 0.0f;
-        float[] drift, whiteBias;
+        float driftAlpha = 0.99f, whiteAlpha = 0.85f, lAccThres = 0.4f;
+        float[] drift, whiteBias, lAcc_Pre;
         drift = getLAcc();
         whiteBias = getLAcc();
-        // apply band pass filter to get rid of drift and white noise TODO how does gravity sensor work? just using accelerometer data and filtering it?
+        lAcc_Pre = getLAcc();
+        setLAcc_Pre(lAcc_Pre);
+        // apply band pass filter to get rid of drift and white noise
         drift[0] = driftAlpha * drift[0] + (1 - driftAlpha) * lAcc[0];
         drift[1] = driftAlpha * drift[1] + (1 - driftAlpha) * lAcc[1];
         drift[2] = driftAlpha * drift[2] + (1 - driftAlpha) * lAcc[2];
@@ -228,6 +264,9 @@ public class Sample {
         lAcc[1] = whiteBias[1] - drift[1];
         lAcc[2] = whiteBias[2] - drift[2];
         // Log.i(LOG_TAG, String.valueOf(pos[0]) + ";" + String.valueOf(pos[1]) + ";" + String.valueOf(pos[2]));
+        float lAccMag = lAcc[0] * lAcc[0] + lAcc[1] * lAcc[1] + lAcc[2] * lAcc[2];
+        if (lAccMag < lAccThres * lAccThres)
+            Arrays.fill(lAcc, 0);// Set speed to zero when it is small
         setLAcc(lAcc);
         if (isSetG() && isSetM()) {
             updateWAcc(getWorldVector(getRotationMatrix(), this.lAcc));
@@ -242,6 +281,11 @@ public class Sample {
         this.m = Arrays.copyOf(m, this.m.length);
     }
 
+    /**
+     * Update magnetic data, also updating world acceleration data at the same time if gravity is already set.
+     *
+     * @param m the magnetic data.
+     */
     public void updateM(float[] m) {
         setM(m);
         haveSetM();
@@ -261,9 +305,15 @@ public class Sample {
         this.wAcc = Arrays.copyOf(wAcc, this.wAcc.length);
     }
 
+    /**
+     * Update world acceleration.
+     *
+     * @param wAcc the world acceleration.
+     */
     private void updateWAcc(float[] wAcc) { // TODO here set small acceleration to zero. is it required to do so?
-        float wAccMag = (float) Math.sqrt(wAcc[0] * wAcc[0] + wAcc[1] * wAcc[1] + wAcc[2] * wAcc[2]);
-        if (wAccMag < 0.25) Arrays.fill(wAcc, 0);
+        //float wAccMag = (float) Math.sqrt(wAcc[0] * wAcc[0] + wAcc[1] * wAcc[1] + wAcc[2] * wAcc[2]);
+        //if (wAccMag < 0.25) Arrays.fill(wAcc, 0);
+        //setLAcc_Pre(getWAcc());
         setWAcc(wAcc);
     }
 
@@ -281,6 +331,65 @@ public class Sample {
 
     private void setPos(float[] pos) {
         this.pos = Arrays.copyOf(pos, this.pos.length);
+    }
+
+    public float[] getLAcc_Pre() {
+        return Arrays.copyOf(lAcc_Pre, 3);
+    }
+
+    private void setLAcc_Pre(float[] lAcc_Pre) {
+        this.lAcc_Pre = Arrays.copyOf(lAcc_Pre, this.lAcc_Pre.length);
+    }
+
+    /**
+     * <p>Update speed and position according to linear acceleration data (or world acceleration data). </p>
+     * <p>This method calculate the speed and position by a speed threshold and these equations: </br>
+     * <ul><i>
+     * <li>speed(i) = speed(i - 1) + acceleration(i - 1) * timeInterval(i) + 0.5 * accelerationGradient(i - 1 to i) * timeInterval(i) ^ 2</li>
+     * <li>position(i) = position(i - 1) + speed(i - 1) * timeInterval(i) + 0.5 * acceleration(i - 1) * timeInterval(i) ^ 2 + (1/6) * accelerationGradient(i - 1 to i) * timeInterval(i) ^ 3</li>
+     * </i></ul></p>
+     */
+    public void updateSpeedPos() {
+        // Explain for the starting sample:
+        //   the problem:
+        //     the first sample in a tracing has a timestamp instead of time interval,
+        //     which is significant in Speed and Pos calculation.
+        //   the solution:
+        //     Clear sample before each starting, thus previous wAcc, speed, pos will be 0,
+        //     So the time data will not be significant because it will be multiplied with 0.
+        //     (See below).
+        // TODO no error in storage, but error in calculation,
+        // TODO (contd) the sampled data have a small and unstable but approximate-direction-stable acceleration error
+        // TODO (contd) this error is called drift noise, or random walk noise (low frequency noise).
+        // TODO (contd) It needs a really really long time to average to zero and can be filtered out by a high pass filter.
+        // TODO (contd) Two solution options:
+        // TODO (contd) 1. as the paper, make use of previous period and holding-phone period, when ever detect a holding-phone, reset speed to zero, however it will not remove the noise, just easing it.
+        // TODO (contd) 2. use a high pass filter, it will remove such noise, however, how to implement? and is low pass filter required for white noise? and is there already a filter in Linear Accelerometer?
+        // calculate speed and position
+        float timeInterval = getTimeInterval();
+        if (timeInterval != 0.0f) {
+            float[] lAccGradMultiplyTimeInterval, lAcc_Pre, lAcc, speed, pos;
+            float speedThres = 0.025f;
+            lAcc_Pre = getLAcc_Pre();
+            lAcc = getLAcc();
+            speed = getSpeed();
+            pos = getPos();
+            lAccGradMultiplyTimeInterval = new float[3];
+            lAccGradMultiplyTimeInterval[0] = lAcc[0] - lAcc_Pre[0];
+            lAccGradMultiplyTimeInterval[1] = lAcc[1] - lAcc_Pre[1];
+            lAccGradMultiplyTimeInterval[2] = lAcc[2] - lAcc_Pre[2];
+            pos[0] = pos[0] + speed[0] * timeInterval + 0.5f * lAcc_Pre[0] * timeInterval * timeInterval + lAccGradMultiplyTimeInterval[0] * timeInterval * timeInterval / 6.0f;
+            pos[1] = pos[1] + speed[1] * timeInterval + 0.5f * lAcc_Pre[1] * timeInterval * timeInterval + lAccGradMultiplyTimeInterval[1] * timeInterval * timeInterval / 6.0f;
+            pos[2] = pos[2] + speed[2] * timeInterval + 0.5f * lAcc_Pre[2] * timeInterval * timeInterval + lAccGradMultiplyTimeInterval[2] * timeInterval * timeInterval / 6.0f;
+            speed[0] = speed[0] + lAcc_Pre[0] * timeInterval + 0.5f * lAccGradMultiplyTimeInterval[0] * timeInterval;
+            speed[1] = speed[1] + lAcc_Pre[1] * timeInterval + 0.5f * lAccGradMultiplyTimeInterval[1] * timeInterval;
+            speed[2] = speed[2] + lAcc_Pre[2] * timeInterval + 0.5f * lAccGradMultiplyTimeInterval[2] * timeInterval;
+            float speedMag = speed[0] * speed[0] + speed[1] * speed[1] + speed[2] * speed[2];
+            if (speedMag < speedThres * speedThres)
+                Arrays.fill(speed, 0);// Set speed to zero when it is small
+            else setPos(pos);
+            setSpeed(speed);
+        }
     }
 
     public float[] getRotationMatrix() {
@@ -323,6 +432,7 @@ public class Sample {
         setWAcc(zeros);
         setSpeed(zeros);
         setPos(zeros);
+        setLAcc_Pre(zeros);
         // Initial rotation matrix to an identity matrix
         float[] identityMatrix = new float[16];
         Arrays.fill(identityMatrix, 0);

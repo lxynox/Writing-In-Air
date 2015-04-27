@@ -3,6 +3,7 @@ package qi.muxi.movementtracker;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.database.DatabaseUtils;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.os.Environment;
@@ -14,57 +15,245 @@ import java.io.FileWriter;
 import java.io.IOException;
 
 /**
+ * A database helper class helping with database interactions directly.
+ *
  * @author Muxi
  */
 public class MeasuredDatabaseHelper extends SQLiteOpenHelper { //TODO when to close the database?
+    /**
+     * the log tag string for debugging this class.
+     */
     public static final String LOG_TAG = "MeasuredDatabaseHelper";
 
+    /**
+     * the name string of database.
+     */
     private static final String DB_NAME = "measuredData.sqlite";
+    /**
+     * the int value of database version.
+     */
     private static final int VERSION = 1;
 
+    /**
+     * the table name string for timeIntervalData table.
+     */
     private static final String TABLE_T = "timeIntervalData";
+    /**
+     * the _id column name string.
+     */
     private static final String COLUMN_ID = "_id";
+    /**
+     * the timeInterval column name string.
+     */
     private static final String COLUMN_T = "timeInterval";
 
+    /**
+     * the table name string for accelerometerData table.
+     */
     private static final String TABLE_ACC = "accelerometerData";
+    /**
+     * the acceleration X-axis column name string.
+     */
     private static final String COLUMN_ACC_X = "accelerometerXData";
+    /**
+     * the acceleration Y-axis column name string.
+     */
     private static final String COLUMN_ACC_Y = "accelerometerYData";
+    /**
+     * the acceleration Z-axis column name string.
+     */
     private static final String COLUMN_ACC_Z = "accelerometerZData";
 
+    /**
+     * the table name string for gravityData table.
+     */
     private static final String TABLE_G = "gravityData";
+    /**
+     * the gravity X-axis column name string.
+     */
     private static final String COLUMN_G_X = "gravityXData";
+    /**
+     * the gravity Y-axis column name string.
+     */
     private static final String COLUMN_G_Y = "gravityYData";
+    /**
+     * the gravity Z-axis column name string.
+     */
     private static final String COLUMN_G_Z = "gravityZData";
 
+    /**
+     * the table name string for linearAccelerometerData table.
+     */
     private static final String TABLE_LACC = "linearAccelerometerData";
+    /**
+     * the linearAcceleration X-axis column name string.
+     */
     private static final String COLUMN_LACC_X = "linearAccelerometerXData";
+    /**
+     * the linearAcceleration Y-axis column name string.
+     */
     private static final String COLUMN_LACC_Y = "linearAccelerometerYData";
+    /**
+     * the linearAcceleration Z-axis column name string.
+     */
     private static final String COLUMN_LACC_Z = "linearAccelerometerZData";
 
+    /**
+     * the table name string for magneticData table.
+     */
     private static final String TABLE_M = "magneticData";
+    /**
+     * the magnetic X-axis column name string.
+     */
     private static final String COLUMN_M_X = "magneticXData";
+    /**
+     * the magnetic Y-axis column name string.
+     */
     private static final String COLUMN_M_Y = "magneticYData";
+    /**
+     * the magnetic Z-axis column name string.
+     */
     private static final String COLUMN_M_Z = "magneticZData";
 
+    /**
+     * the table name string for worldAccelerationData table.
+     */
     private static final String TABLE_WACC = "worldAccelerationData";
+    /**
+     * the worldAcceleration X-axis column name string.
+     */
     private static final String COLUMN_WACC_X = "worldAccelerationXData";
+    /**
+     * the worldAcceleration Y-axis column name string.
+     */
     private static final String COLUMN_WACC_Y = "worldAccelerationYData";
+    /**
+     * the worldAcceleration Z-axis column name string.
+     */
     private static final String COLUMN_WACC_Z = "worldAccelerationZData";
 
+    /**
+     * the table name string for worldSpeedData table.
+     */
     private static final String TABLE_SPEED = "worldSpeedData";
+    /**
+     * the worldSpeed X-axis column name string.
+     */
     private static final String COLUMN_SPEED_X = "worldSpeedXData";
+    /**
+     * the worldSpeed Y-axis column name string.
+     */
     private static final String COLUMN_SPEED_Y = "worldSpeedYData";
+    /**
+     * the worldSpeed Z-axis column name string.
+     */
     private static final String COLUMN_SPEED_Z = "worldSpeedZData";
 
+    /**
+     * the table name string for worldPositionData table.
+     */
     private static final String TABLE_POS = "worldPositionData";
+    /**
+     * the worldPosition X-axis column name string.
+     */
     private static final String COLUMN_POS_X = "worldPositionXData";
+    /**
+     * the worldPosition Y-axis column name string.
+     */
     private static final String COLUMN_POS_Y = "worldPositionYData";
+    /**
+     * the worldPosition Z-axis column name string.
+     */
     private static final String COLUMN_POS_Z = "worldPositionZData";
 
+    /**
+     * Construct measuredDatabaseHelper.
+     *
+     * @param context the context for construction.
+     */
     public MeasuredDatabaseHelper(Context context) {
         super(context, DB_NAME, null, VERSION);
     }
 
+    /**
+     * <p>Called when the database is created for the first time. </p>
+     * <p>This is where the creation of tables and the initial population of the tables should happen.</p>
+     * <p>This method create tables: </br>
+     * <ul>
+     * <li>Time Table: <i>Table_T
+     * <table border="1">
+     * <tr>
+     * <th>_id</th>
+     * <th>timeInterval</th>
+     * </tr>
+     * </table></i></li>
+     * <li>Accelerometer Table: <i>Table_ACC
+     * <table border="1">
+     * <tr>
+     * <th>_id</th>
+     * <th>AccelerometerXData</th>
+     * <th>AccelerometerYData</th>
+     * <th>AccelerometerZData</th>
+     * </tr>
+     * </table></i></li>
+     * <li>GravityTable: <i>Table_G
+     * <table border="1">
+     * <tr>
+     * <th>_id</th>
+     * <th>GravityXData</th>
+     * <th>GravityYData</th>
+     * <th>GravityZData</th>
+     * </tr>
+     * </table></i></li>
+     * <li>LinearAccelerometerTable: <i>Table_LACC
+     * <table border="1">
+     * <tr>
+     * <th>_id</th>
+     * <th>LinearAccelerometerXData</th>
+     * <th>LinearAccelerometerYData</th>
+     * <th>LinearAccelerometerZData</th>
+     * </tr>
+     * </table></i></li>
+     * <li>MagneticTable: <i>Table_M
+     * <table border="1">
+     * <tr>
+     * <th>_id</th>
+     * <th>MagneticXData</th>
+     * <th>MagneticYData</th>
+     * <th>MagneticZData</th>
+     * </tr>
+     * </table></i></li>
+     * <li>WorldAccelerationTable: <i>Table_WACC
+     * <table border="1">
+     * <tr>
+     * <th>_id</th>
+     * <th>WorldAccelerationXData</th>
+     * <th>WorldAccelerationYData</th>
+     * <th>WorldAccelerationZData</th>
+     * </tr>
+     * </table></i></li>
+     * <li>WorldSpeedTable: <i>Table_SPEED
+     * <table border="1">
+     * <tr>
+     * <th>_id</th>
+     * <th>WorldSpeedXData</th>
+     * <th>WorldSpeedYData</th>
+     * <th>WorldSpeedZData</th>
+     * </tr>
+     * </table></i></li>
+     * <li>WorldPositionTable: <i>Table_POS
+     * <table border="1">
+     * <tr>
+     * <th>_id</th>
+     * <th>WorldPositionXData</th>
+     * <th>WorldPositionYData</th>
+     * <th>WorldPositionZData</th>
+     * </tr>
+     * </table></i></li>
+     * </ul></p>
+     *
+     * @param db the database.
+     */
     @Override
     public void onCreate(SQLiteDatabase db) {
         // create "timeIntervalData" table
@@ -105,6 +294,11 @@ public class MeasuredDatabaseHelper extends SQLiteOpenHelper { //TODO when to cl
 
     }
 
+    /**
+     * Clear database, by selecting all content in tables and delete them.
+     *
+     * @return the number of rows affected if a whereClause "1" is passed in, 0 otherwise.
+     */
     public int clearDatabase() {
         int rows;
         String whereClause = "1";
@@ -120,6 +314,12 @@ public class MeasuredDatabaseHelper extends SQLiteOpenHelper { //TODO when to cl
         return rows;
     }
 
+    /**
+     * Insert a sample item into database.
+     *
+     * @param sample the sample to insert.
+     * @return the row ID of the newly inserted row, or -1 if an error occurred
+     */
     public long insertSample(Sample sample) {
         long rowID;
         SQLiteDatabase db = getWritableDatabase();
@@ -172,7 +372,13 @@ public class MeasuredDatabaseHelper extends SQLiteOpenHelper { //TODO when to cl
         return rowID;
     }
 
-    // Set private to disable deletion
+    /**
+     * <p>Delete specific sample item in all tables, specified by _id. </p>
+     * <p><font color = "red">This is private method in order to disable deletion. If ever used, please take a look at the selection and getSize methods, both in this class and {@link MeasuredDatabaseManager}. </font></p>
+     *
+     * @param _id the value of key _id.
+     * @return 1 if passed, otherwise if failed.
+     */
     private int deleteSample(long _id) {
         int rows;
         String whereClause = COLUMN_ID + " = " + String.valueOf(_id);
@@ -188,9 +394,18 @@ public class MeasuredDatabaseHelper extends SQLiteOpenHelper { //TODO when to cl
     }
 
     /**
-     * Selects the time from table T by _id.
+     * Get the number of rows in timeTable, which is also the number of sample items.
+     * @return the number of rows of sample items.
+     */
+    public long getSize()
+    {
+        return DatabaseUtils.queryNumEntries(getWritableDatabase(), TABLE_T);
+    }
+
+    /**
+     * Select the time from table T by _id.
      *
-     * @param _id the value of target id.
+     * @param _id the value of key _id.
      * @return the selected time, if none or more than one entry are selected, return -1.
      */
     public float selectT(long _id) {
@@ -209,7 +424,7 @@ public class MeasuredDatabaseHelper extends SQLiteOpenHelper { //TODO when to cl
      * Selects the value array from table TABLE by _id.
      *
      * @param TABLE the name of target table.
-     * @param _id   the the value of target id.
+     * @param _id   the the value of key _id.
      * @return the selected value array, if none or more than one entries are selected, return all -1.
      */
     public float[] select(String TABLE, long _id) {
@@ -232,8 +447,8 @@ public class MeasuredDatabaseHelper extends SQLiteOpenHelper { //TODO when to cl
     }
 
     /**
-     * Storage all table data into external storage files in path "yourExternalStorageDocumentDirectory/movementTracker".
-     * Post an error log if external storage is not writable.
+     * <p>Storage all table data into external storage files in path <i>"yourExternalStorageDocumentDirectory/movementTracker"</i>. </p>
+     * <p>This method will post an error log if external storage is not writable. </p>
      *
      * @throws IOException
      */

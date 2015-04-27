@@ -34,6 +34,7 @@ public class SensorThread extends Thread {
             }
         }
 
+        Log.i(LOG_TAG, "This handler's looper is : " + Looper.myLooper());
         return mHandler;
     }
 
