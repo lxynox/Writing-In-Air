@@ -20,4 +20,6 @@
     <string name="x_value">X axis:</string>
     <string name="y_value">Y axis:</string>
     <string name="z_value">Z axis:</string>
+    <string name="title_activity_result">Display Result</string>
+    <string name="activity_result">output result here</string>
 </resources>

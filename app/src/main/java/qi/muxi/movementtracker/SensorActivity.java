@@ -1,15 +1,16 @@
 package qi.muxi.movementtracker;
 
+import android.content.Intent;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Handler;
-import android.os.Looper;
 import android.os.Message;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -19,7 +20,16 @@ import android.widget.Toast;
 
 import java.io.IOException;
 
-
+/*
+* Main activity - SensorActivity to interact with the user once the app is opened
+* Second activity - ResultActivity (triggered by notification sent from IntentService)
+*
+* what is implemented here:
+*   Using 3 threads:
+*   main Thread (UI thread) for user interaction only
+*   background Thread: SensorThread (sensor event listener thread),  for sensor events monitoring and start service only
+*   background Thread2: SensorDataProcessService (IntentService thread), for interact with sqlitedatabase and send final notification only
+* */
 public class SensorActivity extends ActionBarActivity implements SensorEventListener {
 
     private static final String LOG_TAG = "SensorActivity";
@@ -27,6 +37,7 @@ public class SensorActivity extends ActionBarActivity implements SensorEventList
 
     TextView xAxisValue, yAxisValue, zAxisValue;
     private boolean enableSensing;
+    private boolean endSensingFlag;
     private SensorManager mSensorManager;
     private Sensor laccSensor, gravity, mSensor;
     private MeasuredDatabaseManager measuredDatabaseManager;
@@ -51,7 +62,8 @@ public class SensorActivity extends ActionBarActivity implements SensorEventList
         myThread = new SensorThread("SensorThread");
         myThread.start();
 
-        enableSensing = getIntent().getBooleanExtra("enableSensingFlag", true);
+        enableSensing = getIntent().getBooleanExtra("enableSensingFlag", false);
+        endSensingFlag = false;
 //       TODO: EVETYTIME the SensorActivity started, clear the database (Change the pos of this method call anywhere if needed )
         measuredDatabaseManager = MeasuredDatabaseManager.getInstance(getApplicationContext());
         Log.i(LOG_TAG, "database is already cleared !");
@@ -62,6 +74,17 @@ public class SensorActivity extends ActionBarActivity implements SensorEventList
         laccSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
         mSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
 
+
+        final Button startButton = (Button) findViewById(R.id.start_button2);
+        startButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+//                create new working thread using IntentService subclass
+                enableSensing = true;
+                Log.i(LOG_TAG, "start button pressed");
+                Toast.makeText(getApplicationContext(), "startButton pressed", Toast.LENGTH_SHORT).show();
+            }
+        });
 //        TODO: Click the end_button to end (fetching data && start new background service)
         final Button endButton = (Button) findViewById(R.id.end_button2);
         endButton.setOnClickListener(new View.OnClickListener() {
@@ -70,8 +93,9 @@ public class SensorActivity extends ActionBarActivity implements SensorEventList
 //              Stop adding new service-intents in the background,
 //              onHandleIntent() is still processing those intents left in the message queues
                 enableSensing = false;
+                endSensingFlag = true;
 //                TODO: add notification here to notify the service when the sensor event is ended
-//                todo: myThread.getHandler().
+//                TODO: myThread.getHandler().
 //                SensorDataProcessService.endActionFetchSensorData (getApplicationContext());
 //                SensorThread.getLooper().quit();
                 Log.i(LOG_TAG, "end button pressed");
@@ -99,38 +123,43 @@ public class SensorActivity extends ActionBarActivity implements SensorEventList
                 Toast.makeText(getApplicationContext(), "reviewButton pressed", Toast.LENGTH_SHORT).show();
             }
         });
-//        UI handler class used to update the views on main Thread (Perhaps the final 2D-image of the user's gesture input )
-        /**
-         * TODO: Retrieving data from backend and display on the UI (suggested ways of implementations)
-         *     1. BroadcastReceiver to receive background service/intents from other background threads/backend
-         *     2. Handler to deal with the Message using handleMessage(Message inputMessage)
-         *     3. Asynctask to deliver intents as service using putExtra("",obj)
-         */
-
-       /* uiHandler = new Handler(Looper.getMainLooper()) {
-            *//*
-             * handleMessage() defines the operations to perform when
-             * the Handler receives a new Message to process.
-             *//*
-            @Override
-            public void handleMessage(Message inputMessage) {
-                // Gets the image task from the incoming Message object.
-               // super.handleMessage(inputMessage);
-               Log.i (LOG_TAG, "Handle message reached ~~~");
-                if (inputMessage != null) {
-                    if (inputMessage.what == 1) {
-                        float[] sensorVal = (float[]) inputMessage.obj;
-                        xAxisValue.setText(String.valueOf(sensorVal[0]));
-                        yAxisValue.setText(String.valueOf(sensorVal[1]));
-                        zAxisValue.setText(String.valueOf(sensorVal[2]));
-                    }
-                }
-            }
-        };*/
-
     }
 
+    /**
+     * This methods are called when the volume button on the sides of mobile devices
+     * are clicked, used to replace the Button View to save from screen display
+     * @param event triggered when the volume hardware button of mobile devices are clicked
+     * @return
+     */
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        int action = event.getAction();
+        int keyCode = event.getKeyCode();
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_VOLUME_UP:
+                if (action == KeyEvent.ACTION_DOWN) {
+                    //TODO: treat it as start button, indicates the beginning of sensing
+                    enableSensing = true;
+                }
+                return true;
+            case KeyEvent.KEYCODE_VOLUME_DOWN:
+                if (action == KeyEvent.ACTION_DOWN) {
+                    //TODO: treat it as end button, indicates the end of sensing
+                    enableSensing = false;
+                    endSensingFlag = true;
+                    Toast.makeText(getApplicationContext(), "end fetching", Toast.LENGTH_SHORT).show();
+                }
+                return true;
+            default:
+                return super.dispatchKeyEvent(event);
+        }
+    }
 
+    /**
+     * inflate to display the view of the widgets of the action bar
+     * @param menu menu icons on the action bar
+     * @return  action bar icons are inflated or not
+     */
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
@@ -144,7 +173,6 @@ public class SensorActivity extends ActionBarActivity implements SensorEventList
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
             return true;
@@ -168,10 +196,13 @@ public class SensorActivity extends ActionBarActivity implements SensorEventList
 //            start another background thread here: SensorDataProcessService($IntentService) thread
             SensorDataProcessService.startActionFetchSensorData(this, sensorEvent.values,
                     sensorEvent.timestamp, sensorEvent.sensor.getType(), false);
-        } else {
+        }
+
+        if (endSensingFlag) {
             Log.i(LOG_TAG, "Stop sensor events, change the service intent FLAG to true");
             SensorDataProcessService.startActionFetchSensorData(this, sensorEvent.values,
                     sensorEvent.timestamp, sensorEvent.sensor.getType(), true);
+            endSensingFlag = false;
         }
 
     }
