@@ -18,7 +18,7 @@
             android:layout_height="wrap_content"
             android:fontFamily= "Times New Roman"
             android:textSize= "30sp"
-            android:textColor= "@color/darkgreen"
+            android:textColor= "@color/orange"
             />
 
         <ImageView

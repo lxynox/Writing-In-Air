@@ -122,15 +122,15 @@ public class SensorDataProcessService extends IntentService {
 //                 TODO: once the processing units is finished, start a new notification from this service and then end/destroy the service
                     Toast.makeText(getApplicationContext(), "Result is ready, check it please !", Toast.LENGTH_SHORT).show();
 
-//                    TODO: change the the icon of this app, reset the title and contents of notification
+//                   TODO: change the the icon of this app, reset the title and contents of notification
                     NotificationCompat.Builder mBuilder =
                             new NotificationCompat.Builder(this)
-                                    .setSmallIcon(R.drawable.ic_action_search)
-                                    .setContentTitle("New notification from Writing-In-Air")
-                                    .setContentText("Hi, your text output is ready!");
+                                    .setSmallIcon(R.mipmap.ic_launcher)
+                                    .setContentTitle("New notification from Magical Writer")
+                                    .setContentText("Hi, your text output is ready ~~~");
 // Creates an explicit intent for an Activity in your app
                     Intent resultIntent = new Intent(this, ResultActivity.class);
-
+//                  TODO: set/initialize the intent contents here
 // The stack builder object will contain an artificial back stack for the
 // started Activity.
 // This ensures that navigating backward from the Activity leads out of
@@ -182,6 +182,4 @@ public class SensorDataProcessService extends IntentService {
     private void handleActionFetchSensorData(int sensorType, float timestamp, float[] eventValues) {
         // TODO: Handle action Foo
     }
-
-
 }

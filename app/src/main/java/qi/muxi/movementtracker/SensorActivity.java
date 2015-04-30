@@ -1,5 +1,6 @@
 package qi.muxi.movementtracker;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -30,12 +31,13 @@ import java.io.IOException;
 *   background Thread: SensorThread (sensor event listener thread),  for sensor events monitoring and start service only
 *   background Thread2: SensorDataProcessService (IntentService thread), for interact with sqlitedatabase and send final notification only
 * */
-public class SensorActivity extends ActionBarActivity implements SensorEventListener {
+public class SensorActivity extends Activity implements SensorEventListener {
 
     private static final String LOG_TAG = "SensorActivity";
     public static Handler uiHandler;
 
-    TextView xAxisValue, yAxisValue, zAxisValue;
+    TextView introLine1, introLine2, introLine3;
+
     private boolean enableSensing;
     private boolean endSensingFlag;
     private SensorManager mSensorManager;
@@ -50,42 +52,47 @@ public class SensorActivity extends ActionBarActivity implements SensorEventList
         setContentView(R.layout.activity_sensor);
         Log.i(LOG_TAG, "onCreate reached");
 
-        xAxisValue = (TextView) findViewById(R.id.x_value);
-        yAxisValue = (TextView) findViewById(R.id.y_value);
-        zAxisValue = (TextView) findViewById(R.id.z_value);
-
-//        sample values(Change on what the user wants to see) used to update the UI widget views
-        xAxisValue.setText(String.valueOf(1));
-        yAxisValue.setText(String.valueOf(2));
-        zAxisValue.setText(String.valueOf(3));
+        introLine1 = (TextView) findViewById(R.id.manual_line1);
+        introLine2 = (TextView) findViewById(R.id.manual_line2);
+        introLine3 = (TextView) findViewById(R.id.manual_line3);
+        introLine1.setVisibility(View.GONE);
+        introLine2.setVisibility(View.GONE);
+        introLine3.setVisibility(View.GONE);
 
         myThread = new SensorThread("SensorThread");
         myThread.start();
 
         enableSensing = getIntent().getBooleanExtra("enableSensingFlag", false);
         endSensingFlag = false;
-//       TODO: EVETYTIME the SensorActivity started, clear the database (Change the pos of this method call anywhere if needed )
+//      TODO: EVETYTIME the SensorActivity started, clear the database (Change the pos of this method call anywhere if needed )
         measuredDatabaseManager = MeasuredDatabaseManager.getInstance(getApplicationContext());
-        Log.i(LOG_TAG, "database is already cleared !");
         measuredDatabaseManager.clearDatabase();
+        Log.i(LOG_TAG, "database is already cleared !");
 
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         gravity = mSensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
         laccSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
         mSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
 
+        final Button manualButton = (Button) findViewById (R.id.manual_button);
+        manualButton.setOnClickListener (new View.OnClickListener(){
+            public void onClick (View view) {
+                introLine1.setVisibility(View.VISIBLE);
+                introLine2.setVisibility(View.VISIBLE);
+                introLine3.setVisibility(View.VISIBLE);
+             }
+        });
 
         final Button startButton = (Button) findViewById(R.id.start_button2);
         startButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-//                create new working thread using IntentService subclass
                 enableSensing = true;
                 Log.i(LOG_TAG, "start button pressed");
                 Toast.makeText(getApplicationContext(), "startButton pressed", Toast.LENGTH_SHORT).show();
             }
         });
-//        TODO: Click the end_button to end (fetching data && start new background service)
+//      TODO: Click the end_button to end (fetching data && start new background service)
         final Button endButton = (Button) findViewById(R.id.end_button2);
         endButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -103,22 +110,20 @@ public class SensorActivity extends ActionBarActivity implements SensorEventList
             }
         });
 
+//        TODO: once the test for the backend id done, which means this button is no longer in use, remove following code
         measuredDatabaseManager = MeasuredDatabaseManager.getInstance(this);
         final Button reviewButton = (Button) findViewById (R.id.review_button);
         reviewButton.setOnClickListener(new View.OnClickListener() {
 
             @Override
             public void onClick(View v) {
-
                 Log.i(LOG_TAG, "reviewButton pressing");
-
                 try {
                     measuredDatabaseManager.printAll();
                 } catch (IOException e) {
                     Log.e(LOG_TAG, "Saving Failed");
                     e.printStackTrace();
                 }
-
                 Log.i(LOG_TAG, "reviewButton pressed");
                 Toast.makeText(getApplicationContext(), "reviewButton pressed", Toast.LENGTH_SHORT).show();
             }
@@ -138,13 +143,13 @@ public class SensorActivity extends ActionBarActivity implements SensorEventList
         switch (keyCode) {
             case KeyEvent.KEYCODE_VOLUME_UP:
                 if (action == KeyEvent.ACTION_DOWN) {
-                    //TODO: treat it as start button, indicates the beginning of sensing
+                    //treat it as start button, indicates the beginning of sensing
                     enableSensing = true;
                 }
                 return true;
             case KeyEvent.KEYCODE_VOLUME_DOWN:
                 if (action == KeyEvent.ACTION_DOWN) {
-                    //TODO: treat it as end button, indicates the end of sensing
+                    // treat it as end button, indicates the end of sensing
                     enableSensing = false;
                     endSensingFlag = true;
                     Toast.makeText(getApplicationContext(), "end fetching", Toast.LENGTH_SHORT).show();
@@ -154,32 +159,34 @@ public class SensorActivity extends ActionBarActivity implements SensorEventList
                 return super.dispatchKeyEvent(event);
         }
     }
-
-    /**
-     * inflate to display the view of the widgets of the action bar
-     * @param menu menu icons on the action bar
-     * @return  action bar icons are inflated or not
-     */
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_sensor, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
-    }
+// TODO: if no action bar needed for this activity, remove all the commented lines below
+// TODO: action bar for this app is mainly used for share (or some other usage i am not sure)
+// TODO: so i created it on the notification activity for sharing and some other operations
+//    /**
+//     * inflate to display the view of the widgets of the action bar
+//     * @param menu menu icons on the action bar
+//     * @return  action bar icons are inflated or not
+//     */
+//    @Override
+//    public boolean onCreateOptionsMenu(Menu menu) {
+//        // Inflate the menu; this adds items to the action bar if it is present.
+//        getMenuInflater().inflate(R.menu.menu_sensor, menu);
+//        return true;
+//    }
+//
+//    @Override
+//    public boolean onOptionsItemSelected(MenuItem item) {
+//        // Handle action bar item clicks here. The action bar will
+//        // automatically handle clicks on the Home/Up button, so long
+//        // as you specify a parent activity in AndroidManifest.xml.
+//        int id = item.getItemId();
+//        //noinspection SimplifiableIfStatement
+//        if (id == R.id.action_settings) {
+//            return true;
+//        }
+//
+//        return super.onOptionsItemSelected(item);
+//    }
 
     // @Override
     public void onSensorChanged(SensorEvent sensorEvent) {
@@ -191,7 +198,6 @@ public class SensorActivity extends ActionBarActivity implements SensorEventList
             Message eventMessage = myThread.getHandler().obtainMessage(1, sensorEvent);
             eventMessage.setTarget(myThread.getHandler());
             eventMessage.sendToTarget();
-
             Log.i(LOG_TAG, "Current running thread is : " + Thread.currentThread());
 //            start another background thread here: SensorDataProcessService($IntentService) thread
             SensorDataProcessService.startActionFetchSensorData(this, sensorEvent.values,
@@ -204,7 +210,6 @@ public class SensorActivity extends ActionBarActivity implements SensorEventList
                     sensorEvent.timestamp, sensorEvent.sensor.getType(), true);
             endSensingFlag = false;
         }
-
     }
 
     //@Override
@@ -216,7 +221,6 @@ public class SensorActivity extends ActionBarActivity implements SensorEventList
     public void onResume() {
         super.onResume();
         Log.i(LOG_TAG, "onResume reached!");
-
         //  start another new thread here
         if (gravity != null)
             // registerListener (Context, Sensor, int sample_frequency, Handler handler)
