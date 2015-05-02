@@ -1,14 +1,15 @@
 package qi.muxi.movementtracker;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.os.Handler;
 import android.os.Message;
-import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -16,9 +17,13 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 
 /*
@@ -34,9 +39,9 @@ import java.io.IOException;
 public class SensorActivity extends Activity implements SensorEventListener {
 
     private static final String LOG_TAG = "SensorActivity";
-    public static Handler uiHandler;
 
     TextView introLine1, introLine2, introLine3;
+    ImageView testImage;// TODO: test image view (should be replaced by the chenlin's imageview/bitmap)
 
     private boolean enableSensing;
     private boolean endSensingFlag;
@@ -59,15 +64,16 @@ public class SensorActivity extends Activity implements SensorEventListener {
         introLine2.setVisibility(View.GONE);
         introLine3.setVisibility(View.GONE);
 
+//      TODO: convert the imageview to bitmap which implements parcealable to send by intent
+        testImage = (ImageView) findViewById (R.id.output_image);
+
         myThread = new SensorThread("SensorThread");
         myThread.start();
 
         enableSensing = getIntent().getBooleanExtra("enableSensingFlag", false);
         endSensingFlag = false;
-//      TODO: EVETYTIME the SensorActivity started, clear the database (Change the pos of this method call anywhere if needed )
+//      TODO: EVETYTIME the SensorActivity started, clear the database (Change the pos of this method call anywhere if needed)
         measuredDatabaseManager = MeasuredDatabaseManager.getInstance(getApplicationContext());
-        measuredDatabaseManager.clearDatabase();
-        Log.i(LOG_TAG, "database is already cleared !");
 
         mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         gravity = mSensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
@@ -87,12 +93,15 @@ public class SensorActivity extends Activity implements SensorEventListener {
         startButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                measuredDatabaseManager.clearDatabase();
+                Log.i(LOG_TAG, "database is already cleared !");
                 enableSensing = true;
                 Log.i(LOG_TAG, "start button pressed");
                 Toast.makeText(getApplicationContext(), "startButton pressed", Toast.LENGTH_SHORT).show();
             }
         });
-//      TODO: Click the end_button to end (fetching data && start new background service)
+
+//      click the end_button to end (fetching data && start new background service)
         final Button endButton = (Button) findViewById(R.id.end_button2);
         endButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -101,16 +110,12 @@ public class SensorActivity extends Activity implements SensorEventListener {
 //              onHandleIntent() is still processing those intents left in the message queues
                 enableSensing = false;
                 endSensingFlag = true;
-//                TODO: add notification here to notify the service when the sensor event is ended
-//                TODO: myThread.getHandler().
-//                SensorDataProcessService.endActionFetchSensorData (getApplicationContext());
-//                SensorThread.getLooper().quit();
                 Log.i(LOG_TAG, "end button pressed");
                 Toast.makeText(getApplicationContext(), "endButton pressed", Toast.LENGTH_SHORT).show();
             }
         });
 
-//        TODO: once the test for the backend id done, which means this button is no longer in use, remove following code
+//      once the test for the backend id done, which means this button is no longer in use, remove following code
         measuredDatabaseManager = MeasuredDatabaseManager.getInstance(this);
         final Button reviewButton = (Button) findViewById (R.id.review_button);
         reviewButton.setOnClickListener(new View.OnClickListener() {
@@ -134,7 +139,7 @@ public class SensorActivity extends Activity implements SensorEventListener {
      * This methods are called when the volume button on the sides of mobile devices
      * are clicked, used to replace the Button View to save from screen display
      * @param event triggered when the volume hardware button of mobile devices are clicked
-     * @return
+     * @return boolean indicate the operation is successful or not
      */
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
@@ -144,7 +149,10 @@ public class SensorActivity extends Activity implements SensorEventListener {
             case KeyEvent.KEYCODE_VOLUME_UP:
                 if (action == KeyEvent.ACTION_DOWN) {
                     //treat it as start button, indicates the beginning of sensing
+                    measuredDatabaseManager.clearDatabase();
+                    Log.i(LOG_TAG, "database is already cleared !");
                     enableSensing = true;
+                    Toast.makeText(getApplicationContext(), "start fetching input", Toast.LENGTH_SHORT).show();
                 }
                 return true;
             case KeyEvent.KEYCODE_VOLUME_DOWN:
@@ -152,7 +160,7 @@ public class SensorActivity extends Activity implements SensorEventListener {
                     // treat it as end button, indicates the end of sensing
                     enableSensing = false;
                     endSensingFlag = true;
-                    Toast.makeText(getApplicationContext(), "end fetching", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getApplicationContext(), "end fetching input", Toast.LENGTH_SHORT).show();
                 }
                 return true;
             default:
@@ -206,10 +214,48 @@ public class SensorActivity extends Activity implements SensorEventListener {
 
         if (endSensingFlag) {
             Log.i(LOG_TAG, "Stop sensor events, change the service intent FLAG to true");
-            SensorDataProcessService.startActionFetchSensorData(this, sensorEvent.values,
-                    sensorEvent.timestamp, sensorEvent.sensor.getType(), true);
             endSensingFlag = false;
+//          todo: remove the following lines of code after the test is done and withdraw the comment lines above
+//          todo: bitmap created for testing the result of output image view
+//          todo: method1: using imageview -> bitmap (could only be created in this activity)
+//          todo: method2: using bitmap directly (depends on chenlin) could be moved to SensorDataProcessService directly, no need to pass intent from this activity
+            BitmapDrawable drawable = (BitmapDrawable) testImage.getDrawable();
+            Bitmap bitmap = drawable.getBitmap();
+            //Convert to byte array
+            String bmpName = createImageFromBitmap (bitmap);
+            ByteArrayOutputStream stream = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+            Log.i(LOG_TAG, "The generated image file name is " + bmpName);
+            byte[] byteArray = stream.toByteArray();
+//          metohd2: using imageview as bmap
+//          testImage.buildDrawingCache();
+//          Bitmap bmap = testImage.getDrawingCache();
+
+//          Last intent service here created to: passing notification contents && lastServiceFlag (image png, jpg)
+            Intent intent = new Intent(this, SensorDataProcessService.class);
+            intent.setAction("qi.muxi.movementtracker.action.STORE_SENSOR_DATA");
+            intent.putExtra("qi.muxi.movementtracker.extra.END_FETCH", true);
+
+            intent.putExtra ("outputImage", byteArray);
+            intent.putExtra ("bmpName", bmpName);
+            startService(intent);
         }
+    }
+//   if the bitmap is very large file, create a local file is recommended
+    public String createImageFromBitmap(Bitmap bitmap) {
+        String fileName = "resultImage";//no .png or .jpg needed
+        try {
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bytes);
+            FileOutputStream fo = openFileOutput(fileName, Context.MODE_PRIVATE);
+            fo.write(bytes.toByteArray());
+            // remember close file output
+            fo.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            fileName = null;
+        }
+        return fileName;
     }
 
     //@Override

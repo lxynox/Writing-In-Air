@@ -5,12 +5,17 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.hardware.Sensor;
 
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
 import android.util.Log;
 import android.widget.Toast;
+
+import java.io.ByteArrayOutputStream;
+import java.io.FileOutputStream;
 
 import static android.hardware.Sensor.TYPE_LINEAR_ACCELERATION;
 /*
@@ -117,28 +122,28 @@ public class SensorDataProcessService extends IntentService {
                     Log.i(LOG_TAG, "writing to database ended!");
                     sample = new Sample();
                     rowCounter = 0;
-//                 TODO: continue to call some API from the service layer which serves as
-//                 TODO: converting processed backend sensor data to the output format of texts or images
-//                 TODO: once the processing units is finished, start a new notification from this service and then end/destroy the service
+//                  TODO: continue to call some API from the service layer which serves as
+//                  TODO: converting processed backend sensor data to the output format of texts or images
+//                  TODO: once the processing units is finished, start a new notification from this service and then end/destroy the service
                     Toast.makeText(getApplicationContext(), "Result is ready, check it please !", Toast.LENGTH_SHORT).show();
 
-//                   TODO: change the the icon of this app, reset the title and contents of notification
+//                  TODO: change the the icon of this app, reset the title and contents of notification
                     NotificationCompat.Builder mBuilder =
                             new NotificationCompat.Builder(this)
                                     .setSmallIcon(R.mipmap.ic_launcher)
                                     .setContentTitle("New notification from Magical Writer")
                                     .setContentText("Hi, your text output is ready ~~~");
-// Creates an explicit intent for an Activity in your app
+//                  Creates an explicit intent for an Activity in your app
                     Intent resultIntent = new Intent(this, ResultActivity.class);
 //                  TODO: set/initialize the intent contents here
-// The stack builder object will contain an artificial back stack for the
-// started Activity.
-// This ensures that navigating backward from the Activity leads out of
-// your application to the Home screen.
+                    resultIntent.putExtra ("resultByteArray", intent.getByteArrayExtra ("outputImage"));
+
+//                   The stack builder object will contain an artificial back stack for the started Activity.
+//                   This ensures that navigating backward from the Activity leads out of your application to the Home screen.
                     TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
-// Adds the back stack for the Intent (but not the Intent itself)
+//                  Adds the back stack for the Intent (but not the Intent itself)
                     stackBuilder.addParentStack(ResultActivity.class);
-// Adds the Intent that starts the Activity to the top of the stack
+//                  Adds the Intent that starts the Activity to the top of the stack
                     stackBuilder.addNextIntent(resultIntent);
                     PendingIntent resultPendingIntent =
                             stackBuilder.getPendingIntent(
@@ -148,7 +153,7 @@ public class SensorDataProcessService extends IntentService {
                     mBuilder.setContentIntent(resultPendingIntent);
                     NotificationManager mNotificationManager =
                             (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-// mId allows you to update the notification later on.
+//                  mId allows you to update the notification later on.
                     mNotificationManager.notify(0, mBuilder.build());
                 }
             }

@@ -50,7 +50,7 @@ public class SensorThread extends Thread {
         Log.i(LOG_TAG, "Sensor thread starts running !");
         Log.i(LOG_TAG, "Running thread is : " + Thread.currentThread());
 
-        Looper.prepare();// often the prepare of Looper has some latency which may block the initialization of mHandler
+        Looper.prepare(); // often the prepare of Looper has some latency which may block the initialization of mHandler
 
         synchronized (this) {
             mHandler = new Handler() {

@@ -10,7 +10,7 @@
     <string name="start_button">Start Sensing</string>
     <string name="end_button">End Sensing</string>
     <string name="title_activity_sensor">SensorActivity</string>
-    <string name="title_activity_result">Display Result</string>
-    <string name="activity_result">output result here</string>
+    <string name="title_activity_result">Magical Writer</string>
+    <string name="activity_result">Review your writing</string>
     <string name="app_hinter">Writing In Air</string>
 </resources>
