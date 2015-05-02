@@ -9,6 +9,10 @@ import android.util.Log;
 
 /**
  * Created by lxynox on 4/23/15.
+ * description: background thread used to monitor the sensor events and start background service to interact
+ * with the database
+ * precondition: start() is called on the main thread && proper mHandler is created on this thread for handling of messages
+ * postcondition: All messages are handled and background service created and stopped with the flag of stop informed
  */
 public class SensorThread extends Thread {
 
@@ -19,7 +23,6 @@ public class SensorThread extends Thread {
     private Context context;
 
     //    private MeasuredDatabaseManager measuredDatabaseManager;
-
     public SensorThread(String threadName) {
         super(threadName);
     }
@@ -47,7 +50,7 @@ public class SensorThread extends Thread {
         Log.i(LOG_TAG, "Sensor thread starts running !");
         Log.i(LOG_TAG, "Running thread is : " + Thread.currentThread());
 
-        Looper.prepare();// often the prepare of Looper has some latency which may block the initialization of mHandler
+        Looper.prepare(); // often the prepare of Looper has some latency which may block the initialization of mHandler
 
         synchronized (this) {
             mHandler = new Handler() {
