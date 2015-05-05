@@ -215,8 +215,9 @@ public class SensorActivity extends Activity implements SensorEventListener {
         if (endSensingFlag) {
             Log.i(LOG_TAG, "Stop sensor events, change the service intent FLAG to true");
             endSensingFlag = false;
-//          todo: remove the following lines of code after the test is done and withdraw the comment lines above
-//          todo: bitmap created for testing the result of output image view
+//           TODO: 两种方法：1. 在 this class 将 testImage 改为 大臣哥的ImageView/bitmap 然后封装在 NEW intent里面pass到service， 再从service传到resultActivity显示
+//           TODO: 2. 如果大臣哥是生成文件的话（比如JPG，PNG之类的话）， 就不要管下面的code， 直接在resultActivity里面 将imageview 的属性src设置为图片的存储路径就行了
+//          todo: remove the following lines of code after the test is done
 //          todo: method1: using imageview -> bitmap (could only be created in this activity)
 //          todo: method2: using bitmap directly (depends on chenlin) could be moved to SensorDataProcessService directly, no need to pass intent from this activity
             BitmapDrawable drawable = (BitmapDrawable) testImage.getDrawable();

@@ -1,5 +1,6 @@
 package qi.muxi.movementtracker;
 
+import android.hardware.Sensor;
 import android.hardware.SensorManager;
 
 import java.util.Arrays;
@@ -53,6 +54,10 @@ public class Sample {
      */
     private float[] lAcc;
     /**
+     * the buffer of linear acceleration.
+     */
+    private float[] lAccBuffer;
+    /**
      * the magnetic.
      */
     private float[] m;
@@ -94,6 +99,8 @@ public class Sample {
         Arrays.fill(g, 0);
         this.lAcc = new float[3];
         Arrays.fill(lAcc, 0);
+        this.lAccBuffer = new float[3];
+        Arrays.fill(lAccBuffer, 0);
         this.m = new float[3];
         Arrays.fill(m, 0);
         this.wAcc = new float[3];
@@ -246,19 +253,27 @@ public class Sample {
      */
     public void updateLAcc(float[] lAcc) { // Apply a band pass filter.
         // a higher alpha refers to a lower split frequency
-        float driftAlpha = 0.99f, whiteAlpha = 0.85f, lAccThres = 0.4f;
+        float[] driftAlpha = new float[3];
+        float[] whiteAlpha = new float[3];
+        float lAccThres = 0.05f;
+        driftAlpha[0] = 0.97f;
+        driftAlpha[1] = 0.97f;
+        driftAlpha[2] = 0.97f;
+        whiteAlpha[0] = 0.8f;
+        whiteAlpha[1] = 0.8f;
+        whiteAlpha[2] = 0.8f;
         float[] drift, whiteBias, lAcc_Pre;
         drift = getLAcc();
         whiteBias = getLAcc();
         lAcc_Pre = getLAcc();
         setLAcc_Pre(lAcc_Pre);
         // apply band pass filter to get rid of drift and white noise
-        drift[0] = driftAlpha * drift[0] + (1 - driftAlpha) * lAcc[0];
-        drift[1] = driftAlpha * drift[1] + (1 - driftAlpha) * lAcc[1];
-        drift[2] = driftAlpha * drift[2] + (1 - driftAlpha) * lAcc[2];
-        whiteBias[0] = whiteAlpha * whiteBias[0] + (1 - whiteAlpha) * lAcc[0];
-        whiteBias[1] = whiteAlpha * whiteBias[1] + (1 - whiteAlpha) * lAcc[1];
-        whiteBias[2] = whiteAlpha * whiteBias[2] + (1 - whiteAlpha) * lAcc[2];
+        drift[0] = driftAlpha[0] * drift[0] + (1 - driftAlpha[0]) * lAcc[0];
+        drift[1] = driftAlpha[1] * drift[1] + (1 - driftAlpha[1]) * lAcc[1];
+        drift[2] = driftAlpha[2] * drift[2] + (1 - driftAlpha[2]) * lAcc[2];
+        whiteBias[0] = whiteAlpha[0] * whiteBias[0] + (1 - whiteAlpha[0]) * lAcc[0];
+        whiteBias[1] = whiteAlpha[1] * whiteBias[1] + (1 - whiteAlpha[1]) * lAcc[1];
+        whiteBias[2] = whiteAlpha[2] * whiteBias[2] + (1 - whiteAlpha[2]) * lAcc[2];
         // white noise = lAcc - whiteBias; noise-free lAcc = lAcc - drift - white noise
         lAcc[0] = whiteBias[0] - drift[0];
         lAcc[1] = whiteBias[1] - drift[1];
@@ -271,6 +286,15 @@ public class Sample {
         if (isSetG() && isSetM()) {
             updateWAcc(getWorldVector(getRotationMatrix(), this.lAcc));
         }
+    }
+
+    public float[] getLAccBuffer() {
+        return Arrays.copyOf(lAccBuffer, 3);
+    }
+
+    private void setLAccBuffer(float[] lAccBuffer) {
+        this.lAccBuffer = Arrays.copyOf(lAccBuffer, this.lAccBuffer.length);
+
     }
 
     public float[] getM() {
@@ -367,9 +391,9 @@ public class Sample {
         // TODO (contd) 2. use a high pass filter, it will remove such noise, however, how to implement? and is low pass filter required for white noise? and is there already a filter in Linear Accelerometer?
         // calculate speed and position
         float timeInterval = getTimeInterval();
-        if (timeInterval != 0.0f) {
+        if (timeInterval != 0.0f&&timeInterval<=0.1f) {
             float[] lAccGradMultiplyTimeInterval, lAcc_Pre, lAcc, speed, pos;
-            float speedThres = 0.025f;
+            float speedThres = 0.012f;
             lAcc_Pre = getLAcc_Pre();
             lAcc = getLAcc();
             speed = getSpeed();
@@ -428,6 +452,7 @@ public class Sample {
         setAcc(zeros);
         setG(zeros);
         setLAcc(zeros);
+        setLAccBuffer(zeros);
         setM(zeros);
         setWAcc(zeros);
         setSpeed(zeros);
@@ -443,6 +468,43 @@ public class Sample {
         setRotationMatrix(identityMatrix);
         this.isSetG = false;
         this.isSetM = false;
+    }
+
+    /**
+     * <p>Update data, by updating ID, timeInterval, sensor values, speed and position in serial. </p>
+     * <p>This method is used each time when a new sensor data is required to update in sample.</p>
+     *
+     * @param mID the primary key _id.
+     * @param timeStamp the timestamp of sensor event.
+     * @param sensorType the sensorType of sensor event.
+     * @param sensorVal the value of sensor event.
+     */
+    public void updateData(long mID, long timeStamp,int sensorType, float[] sensorVal)
+    {
+        updateID(mID);
+        updateTime(timeStamp);
+        float[] g = getG();
+        float[] m = getM();
+        switch(sensorType)
+        {
+            case Sensor.TYPE_LINEAR_ACCELERATION:
+                setLAccBuffer(sensorVal);
+                break;
+
+            case Sensor.TYPE_GRAVITY:
+                g = sensorVal;
+                break;
+
+            case Sensor.TYPE_MAGNETIC_FIELD:
+                m = sensorVal;
+
+            default:
+                break;
+        }
+        updateLAcc(getLAccBuffer());
+        updateG(g);
+        updateM(m);
+        updateSpeedPos();
     }
 
     /**

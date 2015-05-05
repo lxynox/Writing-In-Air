@@ -68,7 +68,7 @@ public class MeasuredDatabaseManager {
     /**
      * Print all items in database into text file, which is in dir <i>"yourExternalStorageDocumentDirectory/movementTracker"</i>.
      *
-     * @throws IOException
+     * @throws java.io.IOException
      */
     public void printAll() throws IOException {
         mHelper.printAll();
@@ -84,16 +84,18 @@ public class MeasuredDatabaseManager {
     }
 
     /**
-     * Load the position data as an ArrayList of float arrays.
-     * @return the ArrayList of position data.
+     * Load the position data as a float array.
+     * @return the Array of position data.
      */
-    public ArrayList<float[]> loadPos()
+    public float[] loadPos()
     {
-        ArrayList<float[]> posList = new ArrayList<float[]>();
         long size = mHelper.getSize();
-        for (long _id = 1;_id<=size;_id++)
-        {
-            posList.add(mHelper.select("worldPositionData", _id));
+        float[] posList = new float[(int)size*3];
+        for (long _id = 1;_id<=size;_id++) {
+            float[] pos = mHelper.select("worldPositionData", _id);
+            posList[(int) (_id - 1) * 3] = pos[0];
+            posList[(int) (_id - 1) * 3 + 1] = pos[1];
+            posList[(int) (_id - 1) * 3 + 2] = pos[2];
         }
         return posList;
     }

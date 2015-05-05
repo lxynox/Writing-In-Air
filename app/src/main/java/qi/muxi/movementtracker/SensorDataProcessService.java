@@ -95,36 +95,17 @@ public class SensorDataProcessService extends IntentService {
                     long timestamp = intent.getLongExtra(EXTRA_TIME_STAMP, 0l);
                     int sensorType = intent.getIntExtra(EXTRA_SENSOR_TYPE, 0);
                     rowCounter++;
-//                update the values to database
-                    sample.updateID(rowCounter);
-                    sample.updateTime(timestamp);
-
-                    switch (sensorType) {
-                        case Sensor.TYPE_LINEAR_ACCELERATION:
-                            sample.updateLAcc(sensorVal);
-                            break;
-
-                        case Sensor.TYPE_GRAVITY:
-                            sample.updateG(sensorVal);
-                            break;
-
-                        case Sensor.TYPE_MAGNETIC_FIELD:
-                            sample.updateM(sensorVal);
-
-                        default:
-                            break;
-                    }
-
-                    sample.updateSpeedPos();
+//                 TODO: change approach to save samples to database (already changed)
+                    sample.updateData(rowCounter, timestamp, sensorType, sensorVal);
                     measuredDatabaseManager.saveSample(sample);
 
                 } else {
                     Log.i(LOG_TAG, "writing to database ended!");
                     sample = new Sample();
                     rowCounter = 0;
-//                  TODO: continue to call some API from the service layer which serves as
-//                  TODO: converting processed backend sensor data to the output format of texts or images
-//                  TODO: once the processing units is finished, start a new notification from this service and then end/destroy the service
+//                   continue to call some API from the service layer which serves as
+//                  converting processed backend sensor data to the output format of texts or images
+//                 once the processing units is finished, start a new notification from this service and then end/destroy the service
                     Toast.makeText(getApplicationContext(), "Result is ready, check it please !", Toast.LENGTH_SHORT).show();
 
 //                  TODO: change the the icon of this app, reset the title and contents of notification
