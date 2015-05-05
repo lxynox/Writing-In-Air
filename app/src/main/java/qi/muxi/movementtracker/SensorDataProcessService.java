@@ -5,8 +5,10 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.Context;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
 import android.hardware.Sensor;
 
 import android.support.v4.app.NotificationCompat;
@@ -106,7 +108,7 @@ public class SensorDataProcessService extends IntentService {
 //                   continue to call some API from the service layer which serves as
 //                  converting processed backend sensor data to the output format of texts or images
 //                 once the processing units is finished, start a new notification from this service and then end/destroy the service
-                    Toast.makeText(getApplicationContext(), "Result is ready, check it please !", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getApplicationContext(), "Result is under processing, wait !", Toast.LENGTH_SHORT).show();
 
 //                  TODO: change the the icon of this app, reset the title and contents of notification
                     NotificationCompat.Builder mBuilder =
@@ -117,7 +119,16 @@ public class SensorDataProcessService extends IntentService {
 //                  Creates an explicit intent for an Activity in your app
                     Intent resultIntent = new Intent(this, ResultActivity.class);
 //                  TODO: set/initialize the intent contents here
-                    resultIntent.putExtra ("resultByteArray", intent.getByteArrayExtra ("outputImage"));
+//                  TODO: 处理生成图片在这里
+
+                    Resources res=getResources();
+                    Bitmap bitmap = BitmapFactory.decodeResource(res, R.drawable.pic);// 这里是图片的path
+                    //Convert to byte array
+                    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+                    Log.i(LOG_TAG, "The generated image file name is " + bmpName);
+                    byte[] byteArray = stream.toByteArray();
+                    resultIntent.putExtra ("resultByteArray", byteArray);
 
 //                   The stack builder object will contain an artificial back stack for the started Activity.
 //                   This ensures that navigating backward from the Activity leads out of your application to the Home screen.

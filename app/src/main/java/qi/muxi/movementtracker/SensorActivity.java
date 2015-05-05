@@ -215,30 +215,12 @@ public class SensorActivity extends Activity implements SensorEventListener {
         if (endSensingFlag) {
             Log.i(LOG_TAG, "Stop sensor events, change the service intent FLAG to true");
             endSensingFlag = false;
-//           TODO: 两种方法：1. 在 this class 将 testImage 改为 大臣哥的ImageView/bitmap 然后封装在 NEW intent里面pass到service， 再从service传到resultActivity显示
-//           TODO: 2. 如果大臣哥是生成文件的话（比如JPG，PNG之类的话）， 就不要管下面的code， 直接在resultActivity里面 将imageview 的属性src设置为图片的存储路径就行了
-//          todo: remove the following lines of code after the test is done
-//          todo: method1: using imageview -> bitmap (could only be created in this activity)
-//          todo: method2: using bitmap directly (depends on chenlin) could be moved to SensorDataProcessService directly, no need to pass intent from this activity
-            BitmapDrawable drawable = (BitmapDrawable) testImage.getDrawable();
-            Bitmap bitmap = drawable.getBitmap();
-            //Convert to byte array
-            String bmpName = createImageFromBitmap (bitmap);
-            ByteArrayOutputStream stream = new ByteArrayOutputStream();
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
-            Log.i(LOG_TAG, "The generated image file name is " + bmpName);
-            byte[] byteArray = stream.toByteArray();
-//          metohd2: using imageview as bmap
-//          testImage.buildDrawingCache();
-//          Bitmap bmap = testImage.getDrawingCache();
-
 //          Last intent service here created to: passing notification contents && lastServiceFlag (image png, jpg)
             Intent intent = new Intent(this, SensorDataProcessService.class);
             intent.setAction("qi.muxi.movementtracker.action.STORE_SENSOR_DATA");
             intent.putExtra("qi.muxi.movementtracker.extra.END_FETCH", true);
-
-            intent.putExtra ("outputImage", byteArray);
-            intent.putExtra ("bmpName", bmpName);
+//            intent.putExtra ("outputImage", byteArray);
+//            intent.putExtra ("bmpName", bmpName);
             startService(intent);
         }
     }
